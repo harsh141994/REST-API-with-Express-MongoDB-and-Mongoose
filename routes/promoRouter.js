@@ -1,54 +1,102 @@
 const express = require ('express');
 const bodyParser = require('body-parser');
+const mongoose = require('mongoose');	//we will connect mongoose to mongodb driver so that
+//now we will use the function of the mongoose
 
-const promoRouter = express.Router();
+const Promotions = require('../models/promotions');
 
-promoRouter.use(bodyParser.json());
+const promotionRouter = express.Router();
 
-//all the following is just the one group, just to avoid any mismatch (/promoes or /promo)
-//further we need to mount this router in the index.js
-promoRouter.route('/')
-.all((req, res, next)=>{ //for /promoes , all means for all get, post, put, delete do this
-	res.statusCode = 200;
-	res.setHeader('Content-Type', 'text/plain');
-	next(); // this asks the function to look further for the /promoes callbacks
-})
+promotionRouter.use(bodyParser.json());
+
+
+promotionRouter.route('/')
 
 //because of the next(), program will execute this also
 .get((req,res,next) => {
-    res.end('Will send all the promos to you!');
+	Promotions.find({})
+	.then((promotions)=>{
+		res.statusCode = 200;
+		res.setHeader ('Content-Type', 'application/json');
+		res.json(promotions);
+	}, (err)=> next(err))
+	.catch((err) => next(err));
 })
 
 .post((req, res, next) => {	//req.body has parsed the json data
-	res.end('Will add the promo: ' + req.body.name + ' with details: ' + req.body.description);
+	//already parsed into json by body parser
+	Promotions.create(req.body)
+	.then((promotion)=>{
+		console.log('Promotions created', promotion);
+		res.statusCode = 200;
+		res.setHeader ('Content-Type', 'application/json');
+		res.json(promotion);
+	}, (err)=> next(err))
+	.catch((err) => next(err));
 })
 
 .put((req, res, next) => {	
 	res.statusCode = 403;	
-	res.end('Put operation is not supported on /promos');
+	res.end('Put operation is not supported on /promotions');
 })
 
 .delete((req,res,next) => {
-    res.end('Deleting all the promos!');
+	Promotions.remove({})
+	.then((resp)=>{
+		res.statusCode = 200;
+		res.setHeader ('Content-Type', 'application/json');
+		res.json(resp);
+	}, (err)=> next(err))
+	.catch((err) => next(err));
 });
 
-//for promoIDs
-promoRouter.get('/:promoId', (req,res,next) => {
-    res.end('Will send details of the promo: '+ req.params.promoId + ' to you!');
-});
 
-promoRouter.post('/:promoId', (req, res, next) => {	//req.body has parsed the json data
+promotionRouter.route('/:promoId')
+
+.get((req,res,next) => {
+	Promotions.findById(req.params.promoId)
+	.then((promotion)=>{
+		res.statusCode = 200;
+		res.setHeader ('Content-Type', 'application/json');
+		res.json(promotion);
+	}, (err)=> next(err))
+	.catch((err) => next(err));
+})
+
+.post( (req, res, next) => {	//req.body has parsed the json data
 	res.statusCode = 403;	
-	res.end('Post operation is not supported on /promos/'+ req.params.promoId);});
+	res.end('Post operation is not supported on /promotions/'+ req.params.promoId);})
 
-promoRouter.put('/:promoId', (req, res, next) => {	
-	res.write('Updating the promo: '+ req.params.promoId + '\n');
-	res.end('Will update the promo '+ req.body.name + 'with details: '+ req.body.description);
+.put( (req, res, next) => {	
+	Promotions.findByIdAndUpdate(req.params.promoId , {
+		$set: req.body
+    }, { new: true })
+    .then((promotion) => {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.json(promotion);
+    }, (err) => next(err))
+    .catch((err) => next(err));
+})
+
+
+.delete( (req,res,next) => {
+	Promotions.findByIdAndRemove(req.params.promoId)
+    .then((resp) => {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.json(resp);
+    }, (err) => next(err))
+    .catch((err) => next(err));
 });
 
-promoRouter.delete('/:promoId', (req,res,next) => {
-    res.end('Deleting promo:' + req.params.promoId);
-});
+module.exports = promotionRouter;
 
 
-module.exports = promoRouter;
+
+
+
+
+
+
+
