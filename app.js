@@ -38,6 +38,34 @@ app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
+
+
+function auth(req, res, next){
+  console.log(req.headers);
+
+  var authHeader = req.headers.authorization;
+
+  if(!authHeader){//it means client has not used login and password, now need to ask the client to use it
+    var err = new Error('You are not authenticated');
+    res.setHeader('WWW-Authenticate', 'Basic');
+    err.status = 401; //unauthorized access
+    return next(err); //it will go to error handler and handle this error
+  }
+
+  var auth = new Buffer(authHeader.split(' ')[1], 'base64').toString().split(':');//username and pass separated by :
+  var user = auth[0];
+  var pass = auth[1];
+  if (user == 'admin' && pass == 'password') {
+      next(); // authorized and now will go to specific request 
+  } else {
+      var err = new Error('You are not authenticated!');
+      res.setHeader('WWW-Authenticate', 'Basic');      
+      err.status = 401;
+      next(err);
+  }
+}
+app.use(auth);
+
 //want to do authentication before client fetch the data from our server
 app.use(express.static(path.join(__dirname, 'public')));
 
