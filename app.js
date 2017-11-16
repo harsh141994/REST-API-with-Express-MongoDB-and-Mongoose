@@ -4,6 +4,8 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
+var session = require('express-session');
+var FileStore = require('session-file-store')(session);
 
 var index = require('./routes/index');
 var users = require('./routes/users');
@@ -37,13 +39,20 @@ app.set('view engine', 'jade');
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(cookieParser('12345-67890-09876-54321'));//signed cookies
+//app.use(cookieParser('12345-67890-09876-54321'));//signed cookies
+app.use(session({
+  name:'session-id',
+  secret:'12345-67890-09876-54321',
+  saveUnitialized:false,
+  resave: false,
+  store: new FileStore()
+}));
 
 
 function auth(req, res, next){
-  console.log("cookie is ", req.signedCookies);
+  console.log("session is ", req.session);
 
-  if(!req.signedCookies.user){//user not authorized yet , first time
+  if(!req.session.user){//user not authorized yet , first time
     var authHeader = req.headers.authorization;
 
     if(!authHeader){//it means client has not used login and password, now need to ask the client to use it
@@ -57,8 +66,8 @@ function auth(req, res, next){
     var user = auth[0];
     var pass = auth[1];
     if (user == 'admin' && pass == 'password') {
-      res.cookie('user', 'admin', {signed:true}); //will set user as admin, therefore we are able to check req.signedCookies.user in the starting
-      console.log("cookie created")
+      req.session.user = 'admin';
+      console.log("session created")
       next(); // authorized and now will go to specific request 
     } 
     else {
@@ -69,7 +78,7 @@ function auth(req, res, next){
     }
   }
   else{
-    if(req.signedCookies.user ==='admin'){
+    if(req.session.user ==='admin'){
       next(); //pass through
     }
     else{//error
