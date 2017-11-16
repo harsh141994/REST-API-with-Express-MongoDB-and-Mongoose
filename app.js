@@ -37,32 +37,49 @@ app.set('view engine', 'jade');
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(cookieParser());
+app.use(cookieParser('12345-67890-09876-54321'));//signed cookies
 
 
 function auth(req, res, next){
-  console.log(req.headers);
+  console.log("cookie is ", req.signedCookies);
 
-  var authHeader = req.headers.authorization;
+  if(!req.signedCookies.user){//user not authorized yet , first time
+    var authHeader = req.headers.authorization;
 
-  if(!authHeader){//it means client has not used login and password, now need to ask the client to use it
-    var err = new Error('You are not authenticated');
-    res.setHeader('WWW-Authenticate', 'Basic');
-    err.status = 401; //unauthorized access
-    return next(err); //it will go to error handler and handle this error
-  }
+    if(!authHeader){//it means client has not used login and password, now need to ask the client to use it
+      var err = new Error('You are not authenticated');
+      res.setHeader('WWW-Authenticate', 'Basic');
+      err.status = 401; //unauthorized access
+      return next(err); //it will go to error handler and handle this error
+    }
 
-  var auth = new Buffer(authHeader.split(' ')[1], 'base64').toString().split(':');//username and pass separated by :
-  var user = auth[0];
-  var pass = auth[1];
-  if (user == 'admin' && pass == 'password') {
+    var auth = new Buffer(authHeader.split(' ')[1], 'base64').toString().split(':');//username and pass separated by :
+    var user = auth[0];
+    var pass = auth[1];
+    if (user == 'admin' && pass == 'password') {
+      res.cookie('user', 'admin', {signed:true}); //will set user as admin, therefore we are able to check req.signedCookies.user in the starting
+      console.log("cookie created")
       next(); // authorized and now will go to specific request 
-  } else {
+    } 
+    else {
       var err = new Error('You are not authenticated!');
       res.setHeader('WWW-Authenticate', 'Basic');      
       err.status = 401;
       next(err);
+    }
   }
+  else{
+    if(req.signedCookies.user ==='admin'){
+      next(); //pass through
+    }
+    else{//error
+      var err = new Error('You are not authenticated');
+      //res.setHeader('WWW-Authenticate', 'Basic');
+      err.status = 401; //unauthorized access
+      return next(err); //it will go to error handler and handle this error
+    }
+  }
+  
 }
 app.use(auth);
 
